@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Paul Kocialkowski
+ * Copyright (C) 2013 Paul Kocialkowski <contact@paulk.fr>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,26 +22,24 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <linux/ioctl.h>
-#include <linux/uinput.h>
 #include <linux/input.h>
 
 #include <hardware/sensors.h>
 #include <hardware/hardware.h>
 
-#define LOG_TAG "exynos_sensors"
+#define LOG_TAG "smdk4x12_sensors"
 #include <utils/Log.h>
 
-#include "exynos_sensors.h"
+#include "smdk4x12_sensors.h"
 
-struct lsm330dlc_gyroscope_data {
+struct cm36651_proximity_data {
 	char path_enable[PATH_MAX];
-	char path_delay[PATH_MAX];
 };
 
-int lsm330dlc_gyroscope_init(struct exynos_sensors_handlers *handlers,
-	struct exynos_sensors_device *device)
+int cm36651_proximity_init(struct smdk4x12_sensors_handlers *handlers,
+	struct smdk4x12_sensors_device *device)
 {
-	struct lsm330dlc_gyroscope_data *data = NULL;
+	struct cm36651_proximity_data *data = NULL;
 	char path[PATH_MAX] = { 0 };
 	int input_fd = -1;
 	int rc;
@@ -51,22 +49,21 @@ int lsm330dlc_gyroscope_init(struct exynos_sensors_handlers *handlers,
 	if (handlers == NULL)
 		return -EINVAL;
 
-	data = (struct lsm330dlc_gyroscope_data *) calloc(1, sizeof(struct lsm330dlc_gyroscope_data));
+	data = (struct cm36651_proximity_data *) calloc(1, sizeof(struct cm36651_proximity_data));
 
-	input_fd = input_open("gyro_sensor");
+	input_fd = input_open("proximity_sensor");
 	if (input_fd < 0) {
 		ALOGE("%s: Unable to open input", __func__);
 		goto error;
 	}
 
-	rc = sysfs_path_prefix("gyro_sensor", (char *) &path);
+	rc = sysfs_path_prefix("proximity_sensor", (char *) &path);
 	if (rc < 0 || path[0] == '\0') {
 		ALOGE("%s: Unable to open sysfs", __func__);
 		goto error;
 	}
 
 	snprintf(data->path_enable, PATH_MAX, "%s/enable", path);
-	snprintf(data->path_delay, PATH_MAX, "%s/poll_delay", path);
 
 	handlers->poll_fd = input_fd;
 	handlers->data = (void *) data;
@@ -86,7 +83,7 @@ error:
 	return -1;
 }
 
-int lsm330dlc_gyroscope_deinit(struct exynos_sensors_handlers *handlers)
+int cm36651_proximity_deinit(struct smdk4x12_sensors_handlers *handlers)
 {
 	ALOGD("%s(%p)", __func__, handlers);
 
@@ -104,10 +101,9 @@ int lsm330dlc_gyroscope_deinit(struct exynos_sensors_handlers *handlers)
 	return 0;
 }
 
-
-int lsm330dlc_gyroscope_activate(struct exynos_sensors_handlers *handlers)
+int cm36651_proximity_activate(struct smdk4x12_sensors_handlers *handlers)
 {
-	struct lsm330dlc_gyroscope_data *data;
+	struct cm36651_proximity_data *data;
 	int rc;
 
 	ALOGD("%s(%p)", __func__, handlers);
@@ -115,7 +111,7 @@ int lsm330dlc_gyroscope_activate(struct exynos_sensors_handlers *handlers)
 	if (handlers == NULL || handlers->data == NULL)
 		return -EINVAL;
 
-	data = (struct lsm330dlc_gyroscope_data *) handlers->data;
+	data = (struct cm36651_proximity_data *) handlers->data;
 
 	rc = sysfs_value_write(data->path_enable, 1);
 	if (rc < 0) {
@@ -128,9 +124,9 @@ int lsm330dlc_gyroscope_activate(struct exynos_sensors_handlers *handlers)
 	return 0;
 }
 
-int lsm330dlc_gyroscope_deactivate(struct exynos_sensors_handlers *handlers)
+int cm36651_proximity_deactivate(struct smdk4x12_sensors_handlers *handlers)
 {
-	struct lsm330dlc_gyroscope_data *data;
+	struct cm36651_proximity_data *data;
 	int rc;
 
 	ALOGD("%s(%p)", __func__, handlers);
@@ -138,7 +134,7 @@ int lsm330dlc_gyroscope_deactivate(struct exynos_sensors_handlers *handlers)
 	if (handlers == NULL || handlers->data == NULL)
 		return -EINVAL;
 
-	data = (struct lsm330dlc_gyroscope_data *) handlers->data;
+	data = (struct cm36651_proximity_data *) handlers->data;
 
 	rc = sysfs_value_write(data->path_enable, 0);
 	if (rc < 0) {
@@ -151,33 +147,19 @@ int lsm330dlc_gyroscope_deactivate(struct exynos_sensors_handlers *handlers)
 	return 0;
 }
 
-int lsm330dlc_gyroscope_set_delay(struct exynos_sensors_handlers *handlers, long int delay)
+int cm36651_proximity_set_delay(struct smdk4x12_sensors_handlers *handlers, long int delay)
 {
-	struct lsm330dlc_gyroscope_data *data;
-	int rc;
-
 	ALOGD("%s(%p, %ld)", __func__, handlers, delay);
-
-	if (handlers == NULL || handlers->data == NULL)
-		return -EINVAL;
-
-	data = (struct lsm330dlc_gyroscope_data *) handlers->data;
-
-	rc = sysfs_value_write(data->path_delay, (int) delay);
-	if (rc < 0) {
-		ALOGE("%s: Unable to write sysfs value", __func__);
-		return -1;
-	}
 
 	return 0;
 }
 
-float lsm330dlc_gyroscope_convert(int value)
+float cm36651_proximity_convert(int value)
 {
-	return ((float) value * 0.3054326f) / 1000.0f;
+	return (float) value * 6.0f;
 }
 
-int lsm330dlc_gyroscope_get_data(struct exynos_sensors_handlers *handlers,
+int cm36651_proximity_get_data(struct smdk4x12_sensors_handlers *handlers,
 	struct sensors_event_t *event)
 {
 	struct input_event input_event;
@@ -193,6 +175,7 @@ int lsm330dlc_gyroscope_get_data(struct exynos_sensors_handlers *handlers,
 	if (input_fd < 0)
 		return -EINVAL;
 
+	memset(event, 0, sizeof(struct sensors_event_t));
 	event->version = sizeof(struct sensors_event_t);
 	event->sensor = handlers->handle;
 	event->type = handlers->handle;
@@ -202,20 +185,9 @@ int lsm330dlc_gyroscope_get_data(struct exynos_sensors_handlers *handlers,
 		if (rc < (int) sizeof(input_event))
 			break;
 
-		if (input_event.type == EV_REL) {
-			switch (input_event.code) {
-				case REL_RX:
-					event->magnetic.x = lsm330dlc_gyroscope_convert(input_event.value);
-					break;
-				case REL_RY:
-					event->magnetic.y = lsm330dlc_gyroscope_convert(input_event.value);
-					break;
-				case REL_RZ:
-					event->magnetic.z = lsm330dlc_gyroscope_convert(input_event.value);
-					break;
-				default:
-					continue;
-			}
+		if (input_event.type == EV_ABS) {
+			if (input_event.code == ABS_DISTANCE)
+				event->distance = cm36651_proximity_convert(input_event.value);
 		} else if (input_event.type == EV_SYN) {
 			if (input_event.code == SYN_REPORT)
 				event->timestamp = input_timestamp(&input_event);
@@ -225,15 +197,15 @@ int lsm330dlc_gyroscope_get_data(struct exynos_sensors_handlers *handlers,
 	return 0;
 }
 
-struct exynos_sensors_handlers lsm330dlc_gyroscope = {
-	.name = "LSM330DLC Gyroscope",
-	.handle = SENSOR_TYPE_GYROSCOPE,
-	.init = lsm330dlc_gyroscope_init,
-	.deinit = lsm330dlc_gyroscope_deinit,
-	.activate = lsm330dlc_gyroscope_activate,
-	.deactivate = lsm330dlc_gyroscope_deactivate,
-	.set_delay = lsm330dlc_gyroscope_set_delay,
-	.get_data = lsm330dlc_gyroscope_get_data,
+struct smdk4x12_sensors_handlers cm36651_proximity = {
+	.name = "CM36651 Proximity",
+	.handle = SENSOR_TYPE_PROXIMITY,
+	.init = cm36651_proximity_init,
+	.deinit = cm36651_proximity_deinit,
+	.activate = cm36651_proximity_activate,
+	.deactivate = cm36651_proximity_deactivate,
+	.set_delay = cm36651_proximity_set_delay,
+	.get_data = cm36651_proximity_get_data,
 	.activated = 0,
 	.needed = 0,
 	.poll_fd = -1,
