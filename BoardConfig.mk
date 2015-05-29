@@ -71,3 +71,15 @@ DEVICE_RESOLUTION := 720x1280
 
 # inherit from the proprietary version
 -include vendor/samsung/i9300/BoardConfigVendor.mk
+ 
+ #RR
+TARGET_TC_ROM := 4.8-linaro
+TARGET_TC_KERNEL := 4.9-sm
+RROPTI := true
+RR_O3 := true
+RR_STRICT := false
+RR_GRAPHITE := true
+RR_KRAIT := false
+RR_PIPE := true
+RR_GCC_VERSION_EXP := $(TARGET_TC_ROM)
+RR_KERNEL_CUSTOM_TOOLCHAIN := $(TARGET_TC_KERNEL)
